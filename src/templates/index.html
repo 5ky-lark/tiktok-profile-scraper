@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Profile Info Scraper</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 TikTok Profile Info Scraper</h1>
+            <p>Extract data from TikTok user</p>
+        </div>
+
+        <div class="input-section">
+            <div class="mode-selector">
+                <button class="mode-btn active" onclick="switchMode('single')">Single User</button>
+                <button class="mode-btn" onclick="switchMode('bulk')">Bulk Process</button>
+            </div>
+            
+            <!-- Single User Mode -->
+            <div id="singleMode" class="mode-content">
+                <div class="input-group">
+                    <input type="text" id="username" placeholder="Enter TikTok username (e.g., @username or username)" autocomplete="off">
+                    <button id="scrapeBtn" onclick="scrapeBio()">
+                        <span id="btnText">Scrape Bio</span>
+                        <span id="spinner" class="spinner" style="display: none;"></span>
+                    </button>
+                </div>
+                <div class="paste-info">
+                    <small>💡 Tip: You can paste a TikTok username or URL directly</small>
+                </div>
+            </div>
+
+            <!-- Bulk Mode -->
+            <div id="bulkMode" class="mode-content" style="display: none;">
+                <div class="bulk-input-group">
+                    <textarea id="bulkUsernames" placeholder="Enter TikTok usernames, one per line:
+@username1
+@username2
+@username3
+
+💡 No limit on usernames - processed in batches of 1000 for optimal performance" rows="8"></textarea>
+                    
+                    <div class="speed-selector">
+                        <label class="speed-option">
+                            <input type="radio" name="speed" value="fast" checked>
+                            <span class="speed-label">🚀 Fast Mode</span>
+                        </label>
+                        <label class="speed-option">
+                            <input type="radio" name="speed" value="safe">
+                            <span class="speed-label">🛡️ Safe Mode</span>
+                        </label>
+                    </div>
+                    
+                    <button id="bulkScrapeBtn" onclick="bulkScrapeBios()">
+                        <span id="bulkBtnText">Bulk Scrape</span>
+                        <span id="bulkSpinner" class="spinner" style="display: none;"></span>
+                    </button>
+                </div>
+                
+                <!-- Import Section -->
+                <div class="import-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <h4 style="color: #555; margin-bottom: 10px;">📥 Continue Previous Session</h4>
+                        <p style="color: #777; font-size: 0.9rem;">Import your previous Excel export to continue building your database</p>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                        <input type="file" id="importFile" accept=".xlsx,.xls" style="display: none;" onchange="importExcel()">
+                        <button id="importBtn" class="export-btn secondary" onclick="document.getElementById('importFile').click()">📥 Import Excel File</button>
+                        <button id="clearCacheBtn" class="export-btn secondary" onclick="clearCache()" style="background-color: #ff6b6b; color: white;">🗑️ Clear Cache</button>
+                        <button id="cacheStatsBtn" class="export-btn secondary" onclick="showCacheStats()">📊 Cache Stats</button>
+                    </div>
+                    <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; color: #888;">
+                        ⚡ Performance Optimized: Batch processing (1000 per batch), virtual scrolling, caching, concurrent processing
+                    </div>
+                    <div id="cacheStatsDisplay" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; display: none;">
+                        <div id="cacheStatsContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Single User Results -->
+        <div id="singleResults" class="results-section" style="display: none;">
+            <div class="result-card">
+                <h3>📧 Email Found for <span id="resultUsername"></span></h3>
+                <div id="singleEmailsList" class="emails-list"></div>
+            </div>
+        </div>
+
+        <!-- Bulk Results -->
+        <div id="bulkResults" class="results-section" style="display: none;">
+            <div class="result-card">
+                <div class="bulk-header">
+                    <h3>📊 Bulk Scraping Results</h3>
+                    <div class="bulk-stats">
+                        <span class="stat">Total: <span id="totalCount">0</span></span>
+                        <span class="stat">With Emails: <span id="emailFoundCount">0</span></span>
+                        <button id="rescrapeNoEmailBtn" class="export-btn secondary" onclick="rescrapeNoEmailResults()" style="margin-right: 10px; background-color: #17a2b8; color: white;">🔄 Rescrape No Email</button>
+                        <button id="removeSuccessBtn" class="export-btn secondary" onclick="removeSuccessResults()" style="margin-right: 10px; background-color: #ff9800; color: white;">🗑️ Remove Success</button>
+                        <button id="clearBtn" class="export-btn secondary" onclick="clearResults()" style="margin-right: 10px;">🗑️ Clear Results</button>
+                        <button id="exportBtn" class="export-btn" onclick="exportResults()">📊 Export Excel</button>
+                    </div>
+                </div>
+                <div id="bulkResultsList" class="bulk-results-table">
+                    <div class="table-container">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Profile URL</th>
+                                    <th>Email</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="error-section" style="display: none;">
+            <div class="error-card">
+                <h3>❌ Error</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Made with ❤️ by Argh</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-focus on input
+        document.getElementById('username').focus();
+
+        // Handle Enter key
+        document.getElementById('username').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                scrapeBio();
+            }
+        });
+
+        // Global variables for bulk results
+        let bulkResults = [];
+
+        // Switch between single and bulk mode
+        function switchMode(mode) {
+            const singleMode = document.getElementById('singleMode');
+            const bulkMode = document.getElementById('bulkMode');
+            const modeBtns = document.querySelectorAll('.mode-btn');
+            
+            // Reset active states
+            modeBtns.forEach(btn => btn.classList.remove('active'));
+            
+            if (mode === 'single') {
+                singleMode.style.display = 'block';
+                bulkMode.style.display = 'none';
+                document.querySelector('[onclick="switchMode(\'single\')"]').classList.add('active');
+                document.getElementById('username').focus();
+            } else {
+                singleMode.style.display = 'none';
+                bulkMode.style.display = 'block';
+                document.querySelector('[onclick="switchMode(\'bulk\')"]').classList.add('active');
+                document.getElementById('bulkUsernames').focus();
+            }
+            
+            // Hide single results, but keep bulk results if they exist
+            document.getElementById('singleResults').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            // Show bulk results if switching to bulk mode and we have results
+            if (mode === 'bulk' && bulkResults && bulkResults.length > 0) {
+                showBulkResults();
+            }
+        }
+
+        // Clean username input
+        function cleanUsername(input) {
+            // Remove TikTok URL if pasted
+            input = input.replace(/https?:\/\/(www\.)?tiktok\.com\/@?/gi, '');
+            // Remove @ symbol
+            input = input.replace('@', '');
+            // Remove any trailing slashes or query parameters
+            input = input.split('/')[0].split('?')[0];
+            return input.trim();
+        }
+
+        async function scrapeBio() {
+            const usernameInput = document.getElementById('username');
+            const username = cleanUsername(usernameInput.value);
+            
+            if (!username) {
+                showError('Please enter a TikTok username');
+                return;
+            }
+
+            // Show loading state
+            setLoading(true);
+            hideResults();
+            hideError();
+
+            try {
+                const response = await fetch('/scrape', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: username })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showSingleResults(data);
+                } else {
+                    showError(data.error, data.suggestion);
+                }
+            } catch (error) {
+                showError('Network error. Please check your connection and try again.');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('scrapeBtn');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            
+            if (loading) {
+                btn.disabled = true;
+                btnText.style.display = 'none';
+                spinner.style.display = 'inline-block';
+            } else {
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                spinner.style.display = 'none';
+            }
+        }
+
+        function showSingleResults(data) {
+            document.getElementById('resultUsername').textContent = '@' + data.username;
+            
+            const emailsList = document.getElementById('singleEmailsList');
+            if (data.email_data && data.email_data.length > 0) {
+                emailsList.innerHTML = data.email_data.map(item => 
+                    `<div class="result-item">
+                        <div class="result-info">
+                            <div class="user-info">
+                                <strong>@${data.username}</strong>
+                                <a href="https://www.tiktok.com/@${data.username}" target="_blank" class="profile-link">🔗 View Profile</a>
+                            </div>
+                            <div class="email-address">📧 ${item.email}</div>
+                            <div class="context-preview">"${item.context}"</div>
+                        </div>
+                        <div class="copy-buttons">
+                            <button class="copy-btn" onclick="copyText('${item.email}', this)">Copy Email</button>
+                        </div>
+                    </div>`
+                ).join('');
+            } else if (data.emails && data.emails.length > 0) {
+                emailsList.innerHTML = data.emails.map(email => 
+                    `<div class="result-item">
+                        <div class="result-info">
+                            <div class="user-info">
+                                <strong>@${data.username}</strong>
+                                <a href="https://www.tiktok.com/@${data.username}" target="_blank" class="profile-link">🔗 View Profile</a>
+                            </div>
+                            <div class="email-address">📧 ${email}</div>
+                        </div>
+                        <div class="copy-buttons">
+                            <button class="copy-btn" onclick="copyText('${email}', this)">Copy Email</button>
+                        </div>
+                    </div>`
+                ).join('');
+            } else {
+                emailsList.innerHTML = '<div class="no-emails">No email addresses found in bio</div>';
+            }
+            
+            document.getElementById('singleResults').style.display = 'block';
+        }
+
+        function showError(message, suggestion = null) {
+            document.getElementById('errorMessage').textContent = message;
+            
+            // Add suggestion link if provided
+            if (suggestion) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.innerHTML = message + '<br><br><a href="' + suggestion + '" target="_blank" class="suggestion-link">🔗 Open TikTok Profile Manually</a>';
+            }
+            
+            document.getElementById('error').style.display = 'block';
+        }
+
+        // Bulk processing function
+        async function bulkScrapeBios() {
+            const textarea = document.getElementById('bulkUsernames');
+            const usernames = textarea.value.split('\n')
+                .map(line => cleanUsername(line.trim()))
+                .filter(username => username.length > 0);
+            
+            if (usernames.length === 0) {
+                showError('Please enter at least one TikTok username');
+                return;
+            }
+
+            // Process usernames in batches for better performance
+            const BATCH_SIZE = 1000;
+            
+            setBulkLoading(true);
+            hideError();
+            
+            // Don't clear existing results - append to them instead
+            // Initialize bulkResults if it doesn't exist
+            if (!bulkResults) {
+                bulkResults = [];
+            }
+            
+            let processed = 0;
+            let totalProcessed = 0;
+            
+            // Show initial progress
+            showBulkProgress(0, usernames.length);
+
+            try {
+                // Split usernames into batches
+                const batches = [];
+                for (let i = 0; i < usernames.length; i += BATCH_SIZE) {
+                    batches.push(usernames.slice(i, i + BATCH_SIZE));
+                }
+                
+                console.log(`📦 Processing ${usernames.length} usernames in ${batches.length} batch(es) of ${BATCH_SIZE}`);
+                
+                // Process each batch
+                for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+                    const batch = batches[batchIndex];
+                    console.log(`🔄 Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} usernames)`);
+                    
+                    // Update progress with batch info
+                    showBulkProgress(totalProcessed, usernames.length, {
+                        current: batchIndex + 1,
+                        total: batches.length,
+                        size: batch.length
+                    });
+                    
+                    const response = await fetch('/bulk-scrape', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ usernames: batch })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Process results from concurrent endpoint
+                        data.results.forEach(result => {
+                            const username = result.username;
+                            
+                            // Check if this username already exists in results to avoid duplicates
+                            const existingIndex = bulkResults.findIndex(r => r.username === username);
+                            
+                            const newResult = {
+                                username: username,
+                                profile_url: `https://www.tiktok.com/@${username}`,
+                                emails: result.success ? (result.emails || []) : [],
+                                email_data: result.success ? (result.email_data || []) : [],
+                                status: result.success ? 'success' : 'failed',
+                                error: result.success ? null : (result.error || 'Unknown error')
+                            };
+                            
+                            if (existingIndex >= 0) {
+                                // Update existing result
+                                bulkResults[existingIndex] = newResult;
+                            } else {
+                                // Add new result
+                                bulkResults.push(newResult);
+                            }
+                            
+                            totalProcessed++;
+                            updateBulkProgress(totalProcessed, usernames.length);
+                        });
+                        
+                        // PERFORMANCE: Use debounced update instead of immediate update
+                        debouncedUpdate();
+                        
+                        // Show performance info for this batch
+                        console.log(`✅ Batch ${batchIndex + 1}: Processed ${data.total} users, ${data.successful} successful (${Math.round(data.successful/data.total*100)}% success rate)`);
+                    } else {
+                        showError(data.error || `Batch ${batchIndex + 1} processing failed`);
+                        break; // Stop processing remaining batches on error
+                    }
+                }
+                
+                console.log(`🎉 All batches completed! Total processed: ${totalProcessed}/${usernames.length}`);
+                
+            } catch (error) {
+                showError('Bulk processing failed. Please try again.');
+            } finally {
+                setBulkLoading(false);
+            }
+        }
+
+        async function processSingleUser(username) {
+            try {
+                const response = await fetch('/scrape', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: username })
+                });
+                
+                return await response.json();
+            } catch (error) {
+                return { success: false, error: 'Network error' };
+            }
+        }
+
+        function setBulkLoading(loading) {
+            const btn = document.getElementById('bulkScrapeBtn');
+            const btnText = document.getElementById('bulkBtnText');
+            const spinner = document.getElementById('bulkSpinner');
+            
+            if (loading) {
+                btn.disabled = true;
+                btnText.style.display = 'none';
+                spinner.style.display = 'inline-block';
+            } else {
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                spinner.style.display = 'none';
+            }
+        }
+
+        function showBulkProgress(current, total, batchInfo = null) {
+            // Create or update progress display
+            let progressDiv = document.getElementById('bulkProgress');
+            if (!progressDiv) {
+                progressDiv = document.createElement('div');
+                progressDiv.id = 'bulkProgress';
+                progressDiv.className = 'progress-container';
+                document.getElementById('bulkMode').appendChild(progressDiv);
+            }
+            
+            const percentage = Math.round((current / total) * 100);
+            let batchText = '';
+            if (batchInfo) {
+                batchText = `<div class="progress-batch">Batch ${batchInfo.current}/${batchInfo.total} (${batchInfo.size} usernames)</div>`;
+            }
+            
+            progressDiv.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                </div>
+                <div class="progress-text">Processing: ${current}/${total} (${percentage}%)</div>
+                ${batchText}
+            `;
+            
+            if (current === total) {
+                setTimeout(() => {
+                    if (progressDiv) progressDiv.remove();
+                }, 2000);
+            }
+        }
+
+        function updateBulkProgress(current, total) {
+            showBulkProgress(current, total);
+        }
+
+        // PERFORMANCE: Virtual scrolling variables
+        let currentPage = 1;
+        const ROWS_PER_PAGE = 150; // Increased for better performance (was 50)
+        
+        // PERFORMANCE: Cache flattened results to avoid re-processing
+        let cachedFlatResults = null;
+        let updateTimeout = null;
+        
+        function updateCachedResults() {
+            if (!bulkResults || bulkResults.length === 0) {
+                cachedFlatResults = null;
+                return;
+            }
+            
+            console.time('Cache Update');
+            cachedFlatResults = [];
+            
+            // Pre-allocate array size for better performance
+            const estimatedSize = bulkResults.length * 2;
+            cachedFlatResults = new Array(estimatedSize);
+            let index = 0;
+            
+            bulkResults.forEach(result => {
+                if (result.emails.length > 0) {
+                    result.emails.forEach(email => {
+                        cachedFlatResults[index++] = {
+                            username: result.username,
+                            profile_url: result.profile_url,
+                            email: email,
+                            status: 'success'
+                        };
+                    });
+                } else {
+                    cachedFlatResults[index++] = {
+                        username: result.username,
+                        profile_url: result.profile_url,
+                        email: null,
+                        status: 'failed'
+                    };
+                }
+            });
+            
+            // Trim array to actual size
+            cachedFlatResults.length = index;
+            console.timeEnd('Cache Update');
+        }
+        
+        function createTableRowElement(item) {
+            // PERFORMANCE: Use DocumentFragment and direct DOM creation instead of innerHTML
+            const tr = document.createElement('tr');
+            tr.className = `table-row ${item.status}`;
+            
+            // Username cell
+            const usernameCell = document.createElement('td');
+            usernameCell.className = 'username-cell';
+            usernameCell.textContent = `@${item.username}`;
+            
+            // URL cell
+            const urlCell = document.createElement('td');
+            urlCell.className = 'url-cell';
+            const urlLink = document.createElement('a');
+            urlLink.href = item.profile_url;
+            urlLink.target = '_blank';
+            urlLink.className = 'profile-link';
+            urlLink.textContent = item.profile_url;
+            urlCell.appendChild(urlLink);
+            
+            // Email cell
+            const emailCell = document.createElement('td');
+            emailCell.className = item.email ? 'email-cell' : 'email-cell no-email';
+            emailCell.textContent = item.email || '❌ No email found';
+            
+            // Actions cell
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'actions-cell';
+            
+            if (item.email) {
+                const copyEmailBtn = document.createElement('button');
+                copyEmailBtn.className = 'copy-btn small';
+                copyEmailBtn.textContent = 'Copy Email';
+                copyEmailBtn.onclick = () => copyText(item.email, copyEmailBtn);
+                
+                const copyUrlBtn = document.createElement('button');
+                copyUrlBtn.className = 'copy-btn small secondary';
+                copyUrlBtn.textContent = 'Copy URL';
+                copyUrlBtn.onclick = () => copyText(item.profile_url, copyUrlBtn);
+                
+                actionsCell.appendChild(copyEmailBtn);
+                actionsCell.appendChild(copyUrlBtn);
+            } else {
+                const copyUrlBtn = document.createElement('button');
+                copyUrlBtn.className = 'copy-btn small secondary';
+                copyUrlBtn.textContent = 'Copy URL';
+                copyUrlBtn.onclick = () => copyText(item.profile_url, copyUrlBtn);
+                actionsCell.appendChild(copyUrlBtn);
+            }
+            
+            // Append all cells to row
+            tr.appendChild(usernameCell);
+            tr.appendChild(urlCell);
+            tr.appendChild(emailCell);
+            tr.appendChild(actionsCell);
+            
+            return tr;
+        }
+        
+        function showBulkResults(page = 1) {
+            // Always show results if we have any
+            if (bulkResults && bulkResults.length > 0) {
+                const totalCount = bulkResults.length;
+                const emailFoundCount = bulkResults.filter(r => r.emails.length > 0).length;
+                
+                document.getElementById('totalCount').textContent = totalCount;
+                document.getElementById('emailFoundCount').textContent = emailFoundCount;
+                
+                // PERFORMANCE: Use cached flattened results
+                if (!cachedFlatResults) {
+                    updateCachedResults();
+                }
+                
+                if (!cachedFlatResults || cachedFlatResults.length === 0) {
+                    return;
+                }
+                
+                console.time('Table Render');
+                const tableBody = document.getElementById('tableBody');
+                
+                // Calculate pagination
+                const totalPages = Math.ceil(cachedFlatResults.length / ROWS_PER_PAGE);
+                const startIndex = (page - 1) * ROWS_PER_PAGE;
+                const endIndex = Math.min(startIndex + ROWS_PER_PAGE, cachedFlatResults.length);
+                const pageResults = cachedFlatResults.slice(startIndex, endIndex);
+                
+                // PERFORMANCE: Use DocumentFragment for faster DOM insertion
+                const fragment = document.createDocumentFragment();
+                pageResults.forEach(item => {
+                    fragment.appendChild(createTableRowElement(item));
+                });
+                
+                // Clear and append in one operation
+                tableBody.innerHTML = '';
+                tableBody.appendChild(fragment);
+                console.timeEnd('Table Render');
+                
+                // Add pagination controls
+                updatePaginationControls(page, totalPages, cachedFlatResults.length);
+                
+                document.getElementById('bulkResults').style.display = 'block';
+                currentPage = page;
+            }
+        }
+        
+        // PERFORMANCE: Debounced update function
+        function debouncedUpdate() {
+            if (updateTimeout) {
+                clearTimeout(updateTimeout);
+            }
+            updateTimeout = setTimeout(() => {
+                updateCachedResults();
+                showBulkResults(currentPage);
+            }, 50); // Small delay to batch updates
+        }
+        
+        function updatePaginationControls(currentPage, totalPages, totalResults) {
+            // Only show pagination if we have more than one page
+            if (totalPages <= 1) {
+                removePaginationControls();
+                return;
+            }
+            
+            let paginationDiv = document.getElementById('pagination-controls');
+            if (!paginationDiv) {
+                paginationDiv = document.createElement('div');
+                paginationDiv.id = 'pagination-controls';
+                paginationDiv.style.cssText = 'text-align: center; margin: 20px 0; padding: 15px; border-top: 1px solid #e0e0e0;';
+                document.getElementById('bulkResultsList').appendChild(paginationDiv);
+            }
+            
+            const startResult = (currentPage - 1) * ROWS_PER_PAGE + 1;
+            const endResult = Math.min(currentPage * ROWS_PER_PAGE, totalResults);
+            
+            paginationDiv.innerHTML = `
+                <div style="margin-bottom: 15px; color: #666; font-size: 0.95rem;">
+                    Showing ${startResult}-${endResult} of ${totalResults} results
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <button onclick="showBulkResults(1)" ${currentPage <= 1 ? 'disabled' : ''} 
+                            class="copy-btn small secondary">⏮️ First</button>
+                    <button onclick="showBulkResults(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} 
+                            class="copy-btn small secondary">← Previous</button>
+                    <span style="margin: 0 15px; color: #555; font-weight: 600;">Page ${currentPage} of ${totalPages}</span>
+                    <button onclick="showBulkResults(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} 
+                            class="copy-btn small secondary">Next →</button>
+                    <button onclick="showBulkResults(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''} 
+                            class="copy-btn small secondary">Last ⏭️</button>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.85rem; color: #888;">
+                    Performance: Only showing ${ROWS_PER_PAGE} rows per page for optimal speed | Cached data for instant navigation
+                </div>
+            `;
+        }
+        
+        function removePaginationControls() {
+            const paginationDiv = document.getElementById('pagination-controls');
+            if (paginationDiv) {
+                paginationDiv.remove();
+            }
+        }
+
+        async function rescrapeNoEmailResults() {
+            if (!bulkResults || bulkResults.length === 0) {
+                showError('No results to rescrape');
+                return;
+            }
+
+            // Collect usernames that have no emails (failed results)
+            const noEmailUsernames = bulkResults
+                .filter(result => !result.emails || result.emails.length === 0)
+                .map(result => result.username);
+
+            if (noEmailUsernames.length === 0) {
+                showError('No "no email found" results to rescrape. All results already have emails.');
+                return;
+            }
+
+            // Confirm before rescraping
+            if (!confirm(`Are you sure you want to rescrape ${noEmailUsernames.length} usernames that have no emails?\n\nThis will update the existing results with fresh data.`)) {
+                return;
+            }
+
+            const rescrapeBtn = document.getElementById('rescrapeNoEmailBtn');
+            const originalText = rescrapeBtn.textContent;
+            rescrapeBtn.textContent = '⏳ Rescraping...';
+            rescrapeBtn.disabled = true;
+
+            // Show progress
+            showBulkProgress(0, noEmailUsernames.length, { message: 'Rescraping no email results...' });
+
+            try {
+                // Process usernames in batches for better performance
+                const BATCH_SIZE = 1000;
+                const batches = [];
+                for (let i = 0; i < noEmailUsernames.length; i += BATCH_SIZE) {
+                    batches.push(noEmailUsernames.slice(i, i + BATCH_SIZE));
+                }
+
+                let totalProcessed = 0;
+
+                // Process each batch
+                for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+                    const batch = batches[batchIndex];
+                    
+                    const response = await fetch('/bulk-scrape', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            usernames: batch,
+                            force_refresh: true  // Force fresh scraping, bypass cache
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Update existing results with new data
+                        data.results.forEach(result => {
+                            const existingIndex = bulkResults.findIndex(r => r.username === result.username);
+                            
+                            if (existingIndex >= 0) {
+                                // Update existing result
+                                bulkResults[existingIndex] = {
+                                    username: result.username,
+                                    profile_url: `https://www.tiktok.com/@${result.username}`,
+                                    emails: result.success ? (result.emails || []) : [],
+                                    email_data: result.success ? (result.email_data || []) : [],
+                                    status: result.success ? 'success' : 'failed',
+                                    error: result.success ? null : (result.error || 'Unknown error')
+                                };
+                            }
+                            
+                            totalProcessed++;
+                            updateBulkProgress(totalProcessed, noEmailUsernames.length);
+                        });
+
+                        // Use debounced update for performance
+                        debouncedUpdate();
+                        
+                    } else {
+                        showError(data.error || `Batch ${batchIndex + 1} rescraping failed`);
+                        break;
+                    }
+                }
+
+                // Show success feedback
+                rescrapeBtn.textContent = '✅ Rescraped!';
+                rescrapeBtn.style.backgroundColor = '#28a745';
+
+                // Show success message
+                alert(`Successfully rescraped ${totalProcessed} usernames!\n\nCheck the results table for updated data.`);
+
+            } catch (error) {
+                showError('Error rescraping no email results. Please try again.');
+                rescrapeBtn.textContent = '❌ Error';
+                rescrapeBtn.style.backgroundColor = '#dc3545';
+            } finally {
+                setTimeout(() => {
+                    rescrapeBtn.textContent = originalText;
+                    rescrapeBtn.style.backgroundColor = '#17a2b8';
+                    rescrapeBtn.disabled = false;
+                }, 3000);
+            }
+        }
+
+        async function removeSuccessResults() {
+            if (!bulkResults || bulkResults.length === 0) {
+                showError('No results to filter');
+                return;
+            }
+
+            // Count successful results for confirmation
+            const successfulCount = bulkResults.filter(r => r.emails && r.emails.length > 0).length;
+            const failedCount = bulkResults.length - successfulCount;
+
+            if (successfulCount === 0) {
+                showError('No successful results to remove. All results are already failed/no email entries.');
+                return;
+            }
+
+            // Confirm before removing
+            if (!confirm(`Are you sure you want to remove ${successfulCount} successful results?\n\nThis will keep ${failedCount} failed/no email results and cannot be undone.`)) {
+                return;
+            }
+
+            const removeSuccessBtn = document.getElementById('removeSuccessBtn');
+            const originalText = removeSuccessBtn.textContent;
+            removeSuccessBtn.textContent = '⏳ Removing...';
+            removeSuccessBtn.disabled = true;
+
+            try {
+                const response = await fetch('/remove-success', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ results: bulkResults })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update bulkResults with filtered results
+                    bulkResults = data.results;
+                    cachedFlatResults = null; // Clear cache to force refresh
+                    currentPage = 1; // Reset pagination
+
+                    // Update the display
+                    debouncedUpdate();
+
+                    // Show success feedback
+                    removeSuccessBtn.textContent = '✅ Removed!';
+                    removeSuccessBtn.style.backgroundColor = '#28a745';
+
+                    // Show success message
+                    alert(`Successfully removed ${data.removed_count} successful results!\n\nRemaining: ${data.remaining_count} failed/no email results`);
+
+                } else {
+                    showError(`Failed to remove successful results: ${data.error}`);
+                    removeSuccessBtn.textContent = '❌ Failed';
+                    removeSuccessBtn.style.backgroundColor = '#dc3545';
+                }
+
+            } catch (error) {
+                showError('Error removing successful results. Please try again.');
+                removeSuccessBtn.textContent = '❌ Error';
+                removeSuccessBtn.style.backgroundColor = '#dc3545';
+            } finally {
+                setTimeout(() => {
+                    removeSuccessBtn.textContent = originalText;
+                    removeSuccessBtn.style.backgroundColor = '#ff9800';
+                    removeSuccessBtn.disabled = false;
+                }, 3000);
+            }
+        }
+
+        function clearResults() {
+            bulkResults = [];
+            cachedFlatResults = null; // Clear cache
+            currentPage = 1; // Reset pagination
+            document.getElementById('totalCount').textContent = '0';
+            document.getElementById('emailFoundCount').textContent = '0';
+            document.getElementById('tableBody').innerHTML = '';
+            removePaginationControls(); // Remove pagination
+            document.getElementById('bulkResults').style.display = 'none';
+        }
+
+        async function importExcel() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                return;
+            }
+
+            // Check file type
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                showError('Please select a valid Excel file (.xlsx or .xls)');
+                return;
+            }
+
+            const importBtn = document.getElementById('importBtn');
+            const originalText = importBtn.textContent;
+            importBtn.textContent = '⏳ Importing...';
+            importBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/import-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Initialize bulkResults if it doesn't exist
+                    if (!bulkResults) {
+                        bulkResults = [];
+                    }
+
+                    // Merge imported data with existing results
+                    data.results.forEach(importedResult => {
+                        const existingIndex = bulkResults.findIndex(r => r.username === importedResult.username);
+                        
+                        if (existingIndex >= 0) {
+                            // Update existing result
+                            bulkResults[existingIndex] = importedResult;
+                        } else {
+                            // Add new result
+                            bulkResults.push(importedResult);
+                        }
+                    });
+
+                    // Switch to bulk mode if not already there
+                    switchMode('bulk');
+                    
+                    // Show updated results with debounced update
+                    debouncedUpdate();
+                    
+                    // Show success feedback
+                    importBtn.textContent = '✅ Imported!';
+                    setTimeout(() => {
+                        importBtn.textContent = originalText;
+                        importBtn.disabled = false;
+                    }, 2000);
+                    
+                    // Clear the file input
+                    fileInput.value = '';
+                    
+                } else {
+                    showError(`Import failed: ${data.error}`);
+                    importBtn.textContent = originalText;
+                    importBtn.disabled = false;
+                }
+            } catch (error) {
+                showError('Import failed. Please check your file and try again.');
+                importBtn.textContent = originalText;
+                importBtn.disabled = false;
+            }
+        }
+
+        async function exportResults() {
+            try {
+                const exportBtn = document.getElementById('exportBtn');
+                const originalText = exportBtn.textContent;
+                exportBtn.textContent = '⏳ Exporting...';
+                exportBtn.disabled = true;
+                
+                const response = await fetch('/export-excel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ results: bulkResults })
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `tiktok_emails_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    // Show success feedback
+                    exportBtn.textContent = '✅ Exported!';
+                    setTimeout(() => {
+                        exportBtn.textContent = originalText;
+                        exportBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    const errorData = await response.json();
+                    showError(`Export failed: ${errorData.error}`);
+                    exportBtn.textContent = originalText;
+                    exportBtn.disabled = false;
+                }
+            } catch (error) {
+                showError('Export failed. Please try again.');
+                const exportBtn = document.getElementById('exportBtn');
+                exportBtn.textContent = '📥 Export Excel';
+                exportBtn.disabled = false;
+            }
+        }
+
+        function hideAllResults() {
+            document.getElementById('singleResults').style.display = 'none';
+            // Only hide bulk results if there are no results to show
+            if (!bulkResults || bulkResults.length === 0) {
+                document.getElementById('bulkResults').style.display = 'none';
+            }
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        async function clearCache() {
+            const clearCacheBtn = document.getElementById('clearCacheBtn');
+            const originalText = clearCacheBtn.textContent;
+            
+            // Confirm before clearing
+            if (!confirm('Are you sure you want to clear all cached data? This will delete all saved scraped profiles and cannot be undone.')) {
+                return;
+            }
+            
+            clearCacheBtn.textContent = '⏳ Clearing...';
+            clearCacheBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/clear-cache', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    clearCacheBtn.textContent = '✅ Cleared!';
+                    clearCacheBtn.style.backgroundColor = '#28a745';
+                    
+                    // Show success message
+                    alert(`Cache cleared successfully!\n\n• Deleted ${data.files_deleted} cached profiles\n• Cleared memory cache\n\nAll scraped data has been removed.`);
+                    
+                    // Refresh cache stats if displayed
+                    if (document.getElementById('cacheStatsDisplay').style.display !== 'none') {
+                        showCacheStats();
+                    }
+                } else {
+                    clearCacheBtn.textContent = '❌ Failed';
+                    clearCacheBtn.style.backgroundColor = '#dc3545';
+                    alert(`Failed to clear cache: ${data.error}`);
+                }
+                
+                setTimeout(() => {
+                    clearCacheBtn.textContent = originalText;
+                    clearCacheBtn.style.backgroundColor = '#ff6b6b';
+                    clearCacheBtn.disabled = false;
+                }, 3000);
+                
+            } catch (error) {
+                clearCacheBtn.textContent = '❌ Error';
+                clearCacheBtn.style.backgroundColor = '#dc3545';
+                alert('Error clearing cache. Please try again.');
+                
+                setTimeout(() => {
+                    clearCacheBtn.textContent = originalText;
+                    clearCacheBtn.style.backgroundColor = '#ff6b6b';
+                    clearCacheBtn.disabled = false;
+                }, 3000);
+            }
+        }
+
+        async function showCacheStats() {
+            const cacheStatsBtn = document.getElementById('cacheStatsBtn');
+            const cacheStatsDisplay = document.getElementById('cacheStatsDisplay');
+            const cacheStatsContent = document.getElementById('cacheStatsContent');
+            const originalText = cacheStatsBtn.textContent;
+            
+            cacheStatsBtn.textContent = '⏳ Loading...';
+            cacheStatsBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/cache-stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    cacheStatsContent.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; text-align: center;">
+                            <div style="padding: 10px; background-color: white; border-radius: 5px; border-left: 4px solid #007bff;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #007bff;">${data.memory_cache_size}</div>
+                                <div style="font-size: 0.9rem; color: #666;">Memory Cache</div>
+                            </div>
+                            <div style="padding: 10px; background-color: white; border-radius: 5px; border-left: 4px solid #28a745;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">${data.file_cache_size}</div>
+                                <div style="font-size: 0.9rem; color: #666;">File Cache</div>
+                            </div>
+                            <div style="padding: 10px; background-color: white; border-radius: 5px; border-left: 4px solid #ffc107;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #ffc107;">${data.total_cache_size_mb} MB</div>
+                                <div style="font-size: 0.9rem; color: #666;">Total Size</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; text-align: center; font-size: 0.85rem; color: #666;">
+                            📁 Cache Directory: ${data.cache_directory}
+                        </div>
+                    `;
+                    
+                    cacheStatsDisplay.style.display = 'block';
+                    cacheStatsBtn.textContent = '📊 Hide Stats';
+                    
+                    // Toggle visibility on next click
+                    cacheStatsBtn.onclick = function() {
+                        if (cacheStatsDisplay.style.display === 'none') {
+                            showCacheStats();
+                        } else {
+                            cacheStatsDisplay.style.display = 'none';
+                            cacheStatsBtn.textContent = originalText;
+                            cacheStatsBtn.onclick = showCacheStats;
+                        }
+                    };
+                } else {
+                    alert(`Failed to get cache stats: ${data.error}`);
+                    cacheStatsBtn.textContent = originalText;
+                }
+                
+            } catch (error) {
+                alert('Error getting cache stats. Please try again.');
+                cacheStatsBtn.textContent = originalText;
+            } finally {
+                cacheStatsBtn.disabled = false;
+            }
+        }
+
+        function copyText(text, buttonElement) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = 'Copied!';
+                setTimeout(() => {
+                    buttonElement.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = 'Copied!';
+                setTimeout(() => {
+                    buttonElement.textContent = originalText;
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
