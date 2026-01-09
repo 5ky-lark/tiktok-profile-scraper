@@ -11,17 +11,17 @@ A Web scraping engine designed to extract public data from TikTok user profiles.
 
 ## 🚀 Key Features
 
-### ⚡ High-Performance Architecture
+
 - **Multi-Tiered Scraping Strategy**: Automatically attempts ultra-fast HTTP requests first, falling back to a custom-managed Selenium WebDriver pool only when necessary (e.g., dynamic content, login walls).
 - **Persistent Caching**: Implements `DiskCache` to store profiles for 24 hours, reducing redundant network calls by up to 40% and creating immediate response times for frequently accessed data.
 - **Lazy-Loaded WebDriver Pool**: Manages a pool of Chrome instances that spin up on demand and recycle automatically, optimizing memory usage while maintaining readiness.
 
-### 🛡️ Smart Anti-Checking & Reliability
+
 - **Intelligent Rate Limiting**: Uses exponential backoff and randomized delays (0.5s - 3s) to mimic human behavior and avoid 429 errors.
 - **User-Agent Rotation**: Rotates through a curated list of modern browser fingerprints to bypass basic WAF protections.
 - **Context-Aware Email Extraction**: Goes beyond simple regex to identify emails within bio text and surrounding sentences, handling "dot" and "at" obfuscations with 98% accuracy.
 
-### 🛠️ Production-Ready
+
 - **Gunicorn Integration**: Comes with a specialized `run_production.py` script for deployment, configured with threaded workers and jitter to prevent thundering herd problems.
 - **Streaming Exports**: Generates Excel reports using streaming generators, allowing export of thousands of rows without crashing server memory.
 - **CPU & Resource Monitoring**: Built-in `CPUMonitor` class tracks system health and optimizes worker allocation dynamically.
