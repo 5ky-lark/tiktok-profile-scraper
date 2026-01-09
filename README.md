@@ -1,4 +1,4 @@
-# 🎵 High-Performance TikTok Profile Scraper
+# 🎵 TikTok Profile Scraper
 
 [![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-2.3.3-000000?style=flat&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
