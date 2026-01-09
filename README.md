@@ -5,7 +5,7 @@
 [![Selenium](https://img.shields.io/badge/Selenium-4.15-43B02A?style=flat&logo=selenium&logoColor=white)](https://www.selenium.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A robust, enterprise-grade web scraping engine designed to extract public data from TikTok user profiles with high efficiency. Built with a focus on performance, scalability, and reliability, it features a multi-tiered fallback architecture and intelligent rate limiting.
+A Web scraping engine designed to extract public data from TikTok user profiles. Built with a focus on performance, scalability, and reliability, it features a multi-tiered fallback architecture and rate limiting.
 
 ---
 
